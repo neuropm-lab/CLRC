@@ -1,0 +1,99 @@
+analysis_name: "abc_expanded_1092lr"
+
+data:
+  nc_h5: "data/ABC_neuronchat/nc_net_expanded.h5"
+  sc_h5: "data/structural_connectivity/sc_5metrics_ABC.h5"
+  fc_h5: "data/functional_connectivity/fc_agr_ABC.h5"
+  distance_h5: "data/structural_connectivity/fiber_distance_ABC.h5"
+  alignment_pkl: "data/expanded_ABC/aligned_ABC_expanded.pkl"
+  # Annotated ABC snRNA-seq anndata scoped to the 447 L+R genes of the
+  # expanded 1092-LR NeuronChat DB. Used by coexpression_baseline.py
+  # (lr_expression_product / spatial_gene_coexpression baselines) for
+  # per-region gene-expression aggregation.
+  abc_expression_h5ad: "data/ABC_neuronchat/ABC_neuronchat_annotated.h5ad"
+  # No pc_summary — expanded pipeline uses all 31 cell types from H5 metadata
+
+features:
+  non_nan_thresh: 0.20
+  zero_max_frac: 0.95
+  var_thresh: 1.0e-6
+
+xgboost:
+  device: "cuda"
+  seed: 42
+  loss: "mae"
+  # huber_slope: 1.0  # only needed when loss: "pseudohuber"
+  y_transform: "log1p"
+  early_stopping_rounds: 400
+  max_boost_rounds: 2000
+  valid_fraction: 0.15
+
+  sc:
+    metric: "volume"
+    version: "voxel"
+    data_type: "SC"
+    feature_mode: "cci_only"
+    target_scale: 1.0
+    params_json: "out/abc_expanded/hpo/sc/best_params.json"  # produced by hpo.py
+
+  fc:
+    metric: "fc_agr"
+    version: "voxel"
+    data_type: "FC"
+    feature_mode: "cci_only"
+    target_scale: 100.0  # FC values are small, scale by 1e2
+    params_json: "out/abc_expanded/hpo/fc/best_params.json"  # produced by hpo.py
+
+hpo:
+  n_trials: 50
+  n_hpo_regions: 35
+
+region_aliases:
+  A24: "ACC"
+
+abc_region_data:
+  # Shared ABC <-> Allen mapping tables. Read by clrc.spatial.atlas (spatial
+  # null / variogram) and pipeline/shared/build_connectivity_targets.py.
+  abc_allen_csv: "data/ABC_region_data/abc_allenRef_averaged.csv"
+  allen_labels_txt: "data/ABC_region_data/allenRef_region_labels.txt"
+  voxel_counts_csv: "data/ABC_region_data/voxel_counts_141regions.csv"
+
+spatial_null:
+  # 141-region Allen-reference labeled NIfTI. Path comes from paths.env.
+  atlas_nii: "${ATLAS_NII_PATH}"
+  # Centroid-first distance: per-region 3D centroid in mm (via NIfTI affine),
+  # Euclidean pairwise distance over ABC regions.
+  n_surrogates: 100
+
+connectivity_targets:
+  # Raw Allen-space inputs consumed by pipeline/shared/build_connectivity_targets.py
+  # to produce data.sc_h5 / fc_h5 / distance_h5 above.
+  structural:
+    # 5 DSI Studio tractography output .mat files (each with 'connectivity' var).
+    dsi_studio_dir: "data/ABC_region_data"
+    dsi_metrics:
+      mean_length: "connectivity_mean_length_1mm.mat"
+      n_tracts: "connectivity_number_of_tracts_1mm.mat"
+      qa: "connectivity_qa_1mm.mat"
+      area_end: "connectivity_total_area_end_regions_1mm.mat"
+      volume: "connectivity_total_volume_1mm.mat"
+    metric_set_name: "sc_5metrics"
+    dataset_name: "ABC"
+    output_dir: "data/structural_connectivity"
+
+  functional:
+    fc_mat: "data/functional_connectivity/connectivity_regressed_race.mat"
+    var_name: "Mean_agr"
+    metric_name: "fc_agr"
+    dataset_name: "ABC"
+    output_dir: "data/functional_connectivity"
+
+  distance:
+    distance_mat: "data/connectivity_span_distance_between_two_regions_1mm.mat"
+    var_name: "connectivity"
+    metric_name: "fiber_distance"
+    dataset_name: "ABC"
+    output_dir: "data/structural_connectivity"
+
+output:
+  base_dir: "out/abc_expanded"

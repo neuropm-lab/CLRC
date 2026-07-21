@@ -1,0 +1,29 @@
+analysis_name: "rosmap_expanded_1092lr"
+
+data:
+  h5_dir: "data/expanded_nc_obj/neuronchat_by_subject_h5"
+  h5_pattern: "nc_subj_*_M50.h5"
+  clinical_csv: "data/metadata/ROSMAP_clinical.csv"
+  clinical_xlsx: "data/metadata/dataset_810_cross-sectional_05-27-2024.xlsx"
+
+clinical:
+  variables:
+    - "cogng_demog_slope"   # global cognition slope
+    - "cogn_global_lv"      # global cognition
+    - "gpath"               # global pathology
+    - "amylsqrt"            # amyloid accumulation (sqrt-transformed)
+    - "tangsqrt"            # tau accumulation (sqrt-transformed, subject-level whole-brain)
+  covariates:
+    - "age_death"
+    - "educ"
+    - "msex"
+
+ad_analysis:
+  min_subjects: 10  # minimum valid subjects for partial Spearman
+  top_k_features: 20  # for colorbar/clustermap plots
+
+region_aliases:
+  A24: "ACC"
+
+output:
+  base_dir: "out/rosmap_expanded"
