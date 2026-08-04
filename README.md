@@ -142,6 +142,48 @@ uv run python src/pipeline/pathology_correlation/explanatory_value_analysis.py -
 
 Two example configs are provided: `configs/abc_expanded.example.yaml` (structural/functional connectivity prediction) and `configs/rosmap_expanded.example.yaml` (Alzheimer's disease association analysis). Copy each to a `.yaml` file without `.example` and edit the `data.*` paths to point at your local copies of the ABC/ROSMAP data. Machine-local absolute paths (e.g. an atlas NIfTI) are expected to be supplied via `${VAR_NAME}` shell-style expansion inside the YAML (see `spatial_null.atlas_nii` in `configs/abc_expanded.example.yaml`).
 
+## ROSMAP input: exactly which file to download
+
+The ROSMAP analysis reads **one** single-nucleus data file. Download it from the ROSMAP
+multi-region multiomic portal:
+
+```bash
+wget https://compbio.mit.edu/AD_Multiomic_MultiRegion/02_snRNA_h5ad/snRNA_Matrix.2263395_Cells_July7_2025.h5ad
+```
+
+`snRNA_Matrix.2263395_Cells_July7_2025.h5ad` (17,798,635,367 bytes) holds 2,263,395 nuclei
+from 111 ROS/MAP participants across six brain regions (EC, HC, TH, AG, MTC, PFC). It is the
+only ROSMAP data file any script in this repository reads. The same resource is deposited in
+the AMP-AD Knowledge Portal as [syn66271522](https://www.synapse.org/Synapse:syn66271522);
+use of the data is governed by a data use agreement established through Rush University
+Medical Center or SAGE Bionetworks (see [the portal](https://compbio.mit.edu/AD_Multiomic_MultiRegion/)).
+The companion snATAC and cCRE products of that resource are not used here.
+
+Point `expression_matrix.rosmap.source_h5ad` in `configs/rosmap_expanded.yaml` at the
+downloaded file, then run these two commands in order:
+
+```bash
+uv run python src/pipeline/shared/build_expression_matrix.py \
+    --config configs/rosmap_expanded.yaml --source rosmap
+
+uv run python src/pipeline/shared/build_connectome.py \
+    --config configs/rosmap_expanded.yaml --scope subject
+```
+
+That reproduces the per-individual ROSMAP connectomes. The first command additionally needs
+the `harmonization` extra (`uv sync --extra harmonization`) and the Allen Institute's Cell
+Type Mapper reference files for the 10x whole human brain taxonomy (CCN202210140), named in
+`expression_matrix.rosmap.mapper_config`.
+
+The participant-level clinical and neuropathological phenotypes used in the association
+analyses (stage 6) are a separate request and are not part of the download above. Detailed
+ROSMAP neuropathological and cognitive data are available at the RADC Research Resource
+Sharing Hub ([radc.rush.edu](https://www.radc.rush.edu/)), pending scientific review and a
+completed material transfer agreement (see
+[radc.rush.edu/requests.htm](https://www.radc.rush.edu/requests.htm)). The variables our
+code reads are `cogn_global_lv`, `cogng_demog_slope`, `gpath`, `amylsqrt` and `tangsqrt`,
+with covariates `age_death`, `educ` and `msex`.
+
 ## Correspondence to the manuscript Methods
 
 Each Methods subsection maps to the files below.
