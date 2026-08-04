@@ -58,6 +58,13 @@ neuronchat:
   layer: null
   normalize: "auto"  # ROSMAP arrives as raw counts, so auto log-normalizes
   output_dir: "data/expanded_nc_obj/neuronchat_by_subject_h5"
+  # Output name template; also drives the resume scan, so changing it starts a
+  # fresh set of outputs rather than continuing an existing one.
+  filename: "nc_subj_{subject}_M{M}.h5"
+  # A subject below either threshold is skipped: the permutation test cannot
+  # form a meaningful null.
+  min_cells: 10
+  min_groups: 2
 
 output:
   base_dir: "out/rosmap_expanded"

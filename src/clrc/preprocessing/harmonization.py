@@ -1,19 +1,22 @@
-"""ROSMAP expression-matrix preparation.
+"""Cell-type label harmonization onto a reference taxonomy.
 
-Harmonizes the ROSMAP single-nucleus matrix onto the ABC cell-type taxonomy
-using the Allen Institute's Cell Type Mapper, then builds the same
-``region_supercluster_celltype`` node label the ABC side produces:
+Maps a dataset whose cell-type labels do not already follow the reference
+taxonomy onto it, using the Allen Institute's Cell Type Mapper:
 
 1. Convert ``var_names`` from gene symbols to ENSG identifiers, which is what
    Cell Type Mapper requires, retaining the symbols for later restoration.
 2. Run Cell Type Mapper against the precomputed statistics and query markers
-   for the ABC whole-human-brain taxonomy.
-3. Join the assignments back, build the node label, and restore gene symbols.
+   for the target taxonomy.
+3. Join the assignments back, build the region-by-cell-type node label, and
+   restore gene symbols.
 
-Unlike the ABC side, which reads cell types straight out of the ABC taxonomy,
-here they are inferred. The expanded pipeline applies no PCA-based gene
-selection at this stage; the matrix is scoped to ligand-receptor genes later,
-inside the connectome build.
+The counterpart in :mod:`clrc.preprocessing.abc` needs none of this, because
+the ABC atlas already carries the taxonomy and its cell types can be read
+straight out of the cluster-annotation hierarchy. Both reach the same output
+contract.
+
+No gene selection is applied here; the matrix is scoped to ligand-receptor
+genes later, inside the connectome build.
 """
 
 from __future__ import annotations
@@ -26,7 +29,7 @@ import pandas as pd
 import scanpy as sc
 import yaml
 
-logger = logging.getLogger("clrc.preprocessing.rosmap")
+logger = logging.getLogger("clrc.preprocessing.harmonization")
 
 # Cell Type Mapper writes a provenance preamble above the CSV header.
 MAPPER_HEADER_ROWS = 4

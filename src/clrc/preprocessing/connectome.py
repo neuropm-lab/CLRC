@@ -28,37 +28,43 @@ from neuronchat import create_neuronchat, run_neuronchat, save_h5
 
 logger = logging.getLogger("clrc.preprocessing.connectome")
 
-# Below this many cells or cell groups a permutation test cannot produce a
-# meaningful null, so the subject is skipped rather than written out.
-MIN_CELLS = 10
-MIN_GROUPS = 2
+DEFAULT_SUBJECT_FILENAME = "nc_subj_{subject}_M{M}.h5"
 
 
-def looks_like_raw_counts(adata: anndata.AnnData) -> bool:
+def looks_like_raw_counts(
+    adata: anndata.AnnData,
+    *,
+    sample_size: int = 100,
+    normalized_max: float = 20.0,
+) -> bool:
     """Report whether ``adata.X`` appears to hold raw integer counts.
 
-    Samples the leading 100x100 block rather than the full matrix, which for
+    Samples a leading square block rather than the full matrix, which for
     whole-brain inputs would mean materialising tens of GB.
 
     Parameters
     ----------
     adata : anndata.AnnData
         Matrix to inspect.
+    sample_size : int
+        Edge length of the leading block to sample.
+    normalized_max : float
+        Largest value expected of log-normalised data. A sampled block that is
+        integer-valued and exceeds this is taken to be raw counts.
 
     Returns
     -------
     bool
-        True when the sampled block is integer-valued and exceeds the range
-        expected of log-normalised data.
+        True when the sampled block looks like raw counts.
     """
-    block = adata.X[:100, :100]
+    block = adata.X[:sample_size, :sample_size]
     sample = block.toarray() if sparse.issparse(block) else np.asarray(block)
     max_val = float(np.max(sample))
     integer_like = bool(np.allclose(sample, np.round(sample), atol=1e-6))
     logger.info(
         "expression check: max=%.2f integer-like=%s", max_val, integer_like
     )
-    return integer_like and max_val > 20
+    return integer_like and max_val > normalized_max
 
 
 def log_normalize(adata: anndata.AnnData, *, target_sum: float = 1e4) -> None:
@@ -219,6 +225,9 @@ def run_connectome_by_subject(
     n_jobs: int = 1,
     layer: str | None = None,
     subjects: list[str] | None = None,
+    min_cells: int = 10,
+    min_groups: int = 2,
+    filename: str = DEFAULT_SUBJECT_FILENAME,
     progress: bool = True,
 ) -> list[Path]:
     """Run NeuronChat separately for each subject, one H5 per subject.
@@ -234,13 +243,20 @@ def run_connectome_by_subject(
     db : dict
         Interaction database.
     out_dir : Path
-        Directory receiving ``nc_subj_{subject}_M{M}.h5``.
+        Directory receiving one H5 per subject, named by ``filename``.
     subject_col : str
         ``.obs`` column identifying the subject.
     group_by, M, fdr, seed, device, n_jobs, layer, progress
         As for :func:`run_connectome`.
     subjects : list[str] | None
         Restrict to these subject IDs. None processes all.
+    min_cells, min_groups : int
+        A subject with fewer cells or fewer distinct ``group_by`` values than
+        these is skipped: the permutation test cannot form a meaningful null
+        below them.
+    filename : str
+        Output filename template, formatted with ``subject`` and ``M``. Also
+        drives the resume scan, so changing it starts a fresh set of outputs.
 
     Returns
     -------
@@ -263,8 +279,12 @@ def run_connectome_by_subject(
         wanted = set(subjects)
         all_subjects = [s for s in all_subjects if s in wanted]
 
-    done = {p.stem.removeprefix("nc_subj_").removesuffix(f"_M{M}")
-            for p in out_dir.glob(f"nc_subj_*_M{M}.h5")}
+    pattern = filename.format(subject="*", M=M)
+    prefix, suffix = pattern.split("*", 1)
+    done = {
+        p.name[len(prefix): len(p.name) - len(suffix)] if suffix else p.name[len(prefix):]
+        for p in out_dir.glob(pattern)
+    }
     pending = [s for s in all_subjects if s not in done]
     logger.info(
         "%d subjects total, %d already complete, %d to run",
@@ -286,7 +306,7 @@ def run_connectome_by_subject(
             n_cells,
             n_groups,
         )
-        if n_cells < MIN_CELLS or n_groups < MIN_GROUPS:
+        if n_cells < min_cells or n_groups < min_groups:
             logger.warning("  skipping %s: below minimum cells/groups", subject)
             del sub
             continue
@@ -296,7 +316,7 @@ def run_connectome_by_subject(
                 run_connectome(
                     sub,
                     db,
-                    out_dir / f"nc_subj_{subject}_M{M}.h5",
+                    out_dir / filename.format(subject=subject, M=M),
                     group_by=group_by,
                     M=M,
                     fdr=fdr,

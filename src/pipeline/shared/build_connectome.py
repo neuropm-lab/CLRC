@@ -17,7 +17,8 @@ Inputs (see ``neuronchat:`` in the YAML config):
 
 Outputs:
   - scope ``dataset``: ``neuronchat.output_h5``
-  - scope ``subject``: ``neuronchat.output_dir/nc_subj_{subject}_M{M}.h5``
+  - scope ``subject``: one H5 per subject under ``neuronchat.output_dir``,
+    named by ``neuronchat.filename``
 
 Usage:
     uv run python src/pipeline/shared/build_connectome.py \\
@@ -138,6 +139,10 @@ def main() -> None:
                 for line in args.subjects_file.read_text().splitlines()
                 if line.strip()
             ]
+        kwargs = {}
+        for key in ("min_cells", "min_groups", "filename"):
+            if key in nc_cfg:
+                kwargs[key] = nc_cfg[key]
         written = run_connectome_by_subject(
             adata,
             db,
@@ -151,6 +156,7 @@ def main() -> None:
             n_jobs=n_jobs,
             layer=layer,
             subjects=subjects,
+            **kwargs,
         )
         logger.info("wrote %d subject connectomes", len(written))
 

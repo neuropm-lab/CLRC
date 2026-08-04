@@ -1,11 +1,11 @@
 """clrc.preprocessing — expression-matrix preparation and connectome construction.
 
-``abc`` and ``rosmap`` each expose a ``build_expression_matrix(cfg)`` reaching
+``abc`` and ``harmonization`` each expose a ``build_expression_matrix(cfg)`` reaching
 the same output contract by different cell-type assignment procedures; import
 the modules rather than the functions to keep the distinction visible.
 """
 
-from clrc.preprocessing import abc, rosmap
+from clrc.preprocessing import abc, harmonization
 from clrc.preprocessing.connectome import (
     log_normalize,
     looks_like_raw_counts,
@@ -17,7 +17,7 @@ from clrc.preprocessing.connectome import (
 
 __all__ = [
     "abc",
-    "rosmap",
+    "harmonization",
     "log_normalize",
     "looks_like_raw_counts",
     "normalize_if_needed",

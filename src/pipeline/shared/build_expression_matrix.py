@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build the annotated expression matrix that the connectome build consumes.
-Calls clrc.preprocessing.abc / clrc.preprocessing.rosmap.
+Calls clrc.preprocessing.abc / clrc.preprocessing.harmonization.
 
 Both sources terminate at the same contract: an ``.h5ad`` carrying
 ``obs['region_supercluster_celltype']`` as the region-by-cell-type node label
@@ -8,7 +8,7 @@ and a ``data`` layer. They reach it by different procedures, because only one
 of the two datasets ships with the ABC cell-type taxonomy already applied:
 
   --source abc      reads cell types from the ABC cluster-annotation hierarchy
-  --source rosmap   infers them with Cell Type Mapper against that taxonomy
+  --source rosmap   maps onto that taxonomy with Cell Type Mapper
 
 Inputs (see ``expression_matrix:`` in the YAML config):
   - ``abc``: the two ABC 10Xv3 releases, the interaction database CSV, the ABC
@@ -35,13 +35,13 @@ from pathlib import Path
 from clrc.core.io import load_yaml_config
 from clrc.core.logging import setup_logging
 from clrc.preprocessing import abc as abc_prep
-from clrc.preprocessing import rosmap as rosmap_prep
+from clrc.preprocessing import harmonization as harmonization_prep
 
 SOURCES = ("abc", "rosmap")
 
 BUILDERS = {
     "abc": abc_prep.build_expression_matrix,
-    "rosmap": rosmap_prep.build_expression_matrix,
+    "rosmap": harmonization_prep.build_expression_matrix,
 }
 
 
