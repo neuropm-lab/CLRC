@@ -9,4 +9,5 @@ env setup once, regardless of which submodule is imported first.
 
 from __future__ import annotations
 
-from clrc import _env  # noqa: F401  — import for side effects (env vars)
+# Imported for its side effects: sets env vars that must precede numba.
+from clrc import _env

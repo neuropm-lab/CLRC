@@ -25,5 +25,39 @@ ad_analysis:
 region_aliases:
   A24: "ACC"
 
+expression_matrix:
+  # Consumed by pipeline/shared/build_expression_matrix.py.
+  source: "rosmap"
+  rosmap:
+    source_h5ad: "data/AD_Multiomic_MultiRegion/snRNA_Matrix.h5ad"
+    # Cell Type Mapper needs ENSG var_names; symbols are restored afterwards.
+    ensg_column: "gene_ids"
+    symbol_column: "varnames"
+    mapper_input_h5ad: "data/AD_Multiomic_MultiRegion/snRNA_Matrix_ensg.h5ad"
+    write_mapper_input: true
+    # Cell Type Mapper config naming the precomputed stats and query markers
+    # for the ABC 10x whole-human-brain taxonomy (CCN202210140).
+    mapper_config: "configs/cell_type_mapper.yaml"
+    mapper_result_csv: "data/mapmycells_result/output.csv"
+    region_column: "BrainRegion"
+    supercluster_column: "supercluster_name"
+    output_h5ad: "data/AD_Multiomic_MultiRegion/snRNA_Matrix_afterMapMyCells.h5ad"
+
+neuronchat:
+  # Consumed by pipeline/shared/build_connectome.py; one H5 per subject.
+  scope: "subject"
+  expression_h5ad: "data/AD_Multiomic_MultiRegion/snRNA_Matrix_afterMapMyCells.h5ad"
+  db_json: "src/neuronchat/data/merged_interactionDB_human_1092LR.json"
+  group_by: "region_supercluster_celltype"
+  subject_col: "ROSMAP_IndividualID"
+  M: 50            # must match the M in data.h5_pattern above
+  fdr: 0.05
+  seed: 42
+  device: "cpu"
+  n_jobs: 8        # CPU backend only
+  layer: null
+  normalize: "auto"  # ROSMAP arrives as raw counts, so auto log-normalizes
+  output_dir: "data/expanded_nc_obj/neuronchat_by_subject_h5"
+
 output:
   base_dir: "out/rosmap_expanded"

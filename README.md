@@ -32,8 +32,9 @@ Connectomics describes macroscale brain networks; single-cell transcriptomics de
 ```bash
 git clone https://github.com/neuropm-lab/CLRC.git
 cd CLRC
-uv sync                 # CPU-only: core dependencies
-uv sync --extra gpu     # + torch/cupy for GPU-accelerated NeuronChat + XGBoost
+uv sync                  # CPU-only: core dependencies
+uv sync --extra gpu      # + torch/cupy for GPU-accelerated NeuronChat + XGBoost
+uv sync --extra rosmap   # + Cell Type Mapper, only for the ROSMAP prep step
 
 cp configs/abc_expanded.example.yaml configs/abc_expanded.yaml
 cp configs/rosmap_expanded.example.yaml configs/rosmap_expanded.yaml
@@ -62,10 +63,13 @@ Managed with [`uv`](https://docs.astral.sh/uv/):
 
 ```bash
 uv sync                  # core (CPU) dependencies only
-uv sync --extra gpu       # add torch + cupy-cuda13x for GPU execution
+uv sync --extra gpu      # add torch + cupy-cuda13x for GPU execution
+uv sync --extra rosmap   # add Cell Type Mapper (ROSMAP harmonization only)
 ```
 
 `uv sync` respects `.python-version` (pinned to 3.12) and will fetch a matching interpreter automatically if one isn't already installed. `pyproject.toml` + `uv.lock` is the single source of truth for the dependency graph.
+
+The `rosmap` extra is separate because the Allen Institute's [Cell Type Mapper](https://github.com/AllenInstitute/cell_type_mapper) is not published to PyPI and declares the JupyterLab and Sphinx stacks among its runtime dependencies. Keeping it out of the core set means `uv sync` installs 75 packages rather than 250. You only need it for `build_expression_matrix.py --source rosmap`; every other stage, including all of the structural/functional connectivity work, runs on the core install.
 
 ## Usage
 
@@ -74,9 +78,27 @@ All drivers are YAML-config-driven scripts under `src/pipeline/`, organized into
 ### Shared data preparation (`src/pipeline/shared/`)
 
 ```bash
+# 1. annotated, cell-type-labelled expression matrix
+uv run python src/pipeline/shared/build_expression_matrix.py --config configs/abc_expanded.yaml --source abc
+
+# 2. the connectome itself (NeuronChat permutation inference)
+uv run python src/pipeline/shared/build_connectome.py --config configs/abc_expanded.yaml --scope dataset
+
+# 3. structural / functional connectivity targets, and the CCI feature matrix
 uv run python src/pipeline/shared/build_connectivity_targets.py --config configs/abc_expanded.yaml --target all
 uv run python src/pipeline/shared/build_cci_features.py --config configs/abc_expanded.yaml
 ```
+
+Steps 1 and 2 are the connectome reconstruction described in *Methods, Construction of a
+Cell-Type-Resolved Directed Molecular Connectome*. Both accept a source/scope selector so the
+same drivers serve both cohorts: `--source abc|rosmap` and `--scope dataset|subject`. The
+ROSMAP arm runs the same two steps with `--source rosmap` and `--scope subject`, producing one
+connectome per individual; subject runs are resumable, skipping any subject whose output
+already exists.
+
+If you would rather not rebuild the ABC connectome, the reconstructed connectome is deposited at
+[doi.org/10.5281/zenodo.21777943](https://doi.org/10.5281/zenodo.21777943) (CC-BY-4.0). Point
+`data.nc_h5` at the downloaded file and start from step 3.
 
 ### Structural/functional connectivity prediction (`src/pipeline/connectivity_prediction/`)
 
@@ -112,7 +134,7 @@ uv run python src/pipeline/pathology_correlation/explanatory_value_analysis.py -
 - ABC atlas snRNA-seq (H5/h5ad), 109 brain regions x 31 cell types.
 - DSI Studio tractography `.mat` files and resting-state functional-connectivity `.mat` file (structural/functional connectivity targets).
 - ROSMAP snRNA-seq (per-subject H5), clinical/pathology spreadsheet, and subject-linkage CSV.
-- `src/neuronchat/data/merged_interactionDB_human*.{csv,json}`: the curated ligand-receptor interaction database (1,092 pairs), merged from CellChatDB and NeuronChatDB and bundled with the repository. The manuscript's reported 1,014-pair set is derived from this database via the bootstrapped-PCA gene-selection step described in Methods.
+- `src/neuronchat/data/merged_interactionDB_human*.{csv,json}`: the curated ligand-receptor interaction database, merged from the human subsets of NeuronChatDB and CellChat v2 plus additional curated human entries, and bundled with the repository. It holds 1,092 LR pairs spanning 447 unique HGNC gene symbols. The manuscript's other two counts are computed downstream from this database, not stored: of the 1,092 pairs, 1,014 yield at least one non-zero communication value across the 2,133 populated region-by-cell-type nodes, and 811 retain at least one feature after the NaN/zero pre-selection filter and form the basis of the downstream analyses.
 
 **Outputs**: each driver writes under `<config.output.base_dir>/`, e.g. `out/abc_expanded/` or `out/rosmap_expanded/` (gitignored) — per-fold model artifacts, feature-importance CSVs, SHAP values, spatial-null results, and partial-Spearman correlation tables. Exact output layout is documented in each driver's module docstring.
 
@@ -131,7 +153,8 @@ src/
                  (numpy + torch/cupy backends); src/neuronchat/data/ holds the curated
                  ligand-receptor interaction database
   pipeline/      YAML-config-driven drivers, split by analysis track:
-    shared/               upstream data prep (connectivity targets, CCI feature matrix)
+    shared/               upstream data prep (expression matrix, connectome
+                          construction, connectivity targets, CCI feature matrix)
     connectivity_prediction/  SC/FC prediction track (HPO, training, SHAP, robustness checks)
     pathology_correlation/    ROSMAP -> AD association track
 configs/         Example YAML configs (copy + edit; production configs are gitignored)
@@ -141,7 +164,10 @@ configs/         Example YAML configs (copy + edit; production configs are gitig
 
 Note:
 
-- **Installing the software** (`uv sync`) gives you a working environment and every analysis script used to produce the manuscript's results.
-- **Reproducing the reported results** additionally requires: (1) the ABC atlas and ROSMAP snRNA-seq data; (2) running the pipeline stages in the order shown in [Usage](#usage) with the exact config values used for the manuscript (the tracked configs are illustrative examples with placeholder output paths, not the production configs); (3) GPU hardware for the NeuronChat permutation step and XGBoost training at the scale used in the paper (LOBO cross-validation over 101-109 brain regions with Optuna hyperparameter search).
+- **Installing the software** (`uv sync`) gives you a working environment and every analysis script used to produce the manuscript's results. `.python-version`, `pyproject.toml` and `uv.lock` pin the interpreter and the full resolved dependency graph, so `uv sync` reproduces the exact environment the manuscript was produced in.
+- **The tracked example configs carry the manuscript's analysis parameters**, not placeholders: feature-filter thresholds, the XGBoost seed and training settings, the Optuna trial budget, the surrogate count for the spatial nulls, and the clinical variables and covariates for the AD arm are all the values used for the reported results. What you must supply yourself is `data.*` (paths to your own ABC/ROSMAP/connectivity downloads) and `output.base_dir`.
+- **Reproducing the reported results** additionally requires: (1) the ABC atlas and ROSMAP snRNA-seq data; (2) running the pipeline stages in the order shown in [Usage](#usage); (3) GPU hardware for the NeuronChat permutation step and XGBoost training at the scale used in the paper (LOBO cross-validation over 101-109 brain regions with Optuna hyperparameter search).
 
-No random seeds, checkpoints, or intermediate result files are bundled in this repository; each is generated by running the corresponding driver.
+Randomness is seeded, not left to chance: model training uses `xgboost.seed` from the config, and `run_neuronchat` accepts a `seed` that is expanded into a deterministic per-interaction seed so the permutation test reproduces even under parallel execution.
+
+No checkpoints or intermediate result files are bundled in this repository; each is generated by running the corresponding driver.

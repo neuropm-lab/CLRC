@@ -95,5 +95,45 @@ connectivity_targets:
     dataset_name: "ABC"
     output_dir: "data/structural_connectivity"
 
+expression_matrix:
+  # Consumed by pipeline/shared/build_expression_matrix.py to produce the
+  # annotated matrix that build_connectome.py reads.
+  source: "abc"
+  abc:
+    # The two ABC 10Xv3 whole-human-brain releases.
+    neuron_h5ad: "data/ABC_raw/WHB-10Xv3-Neurons.h5ad"
+    nonneuron_h5ad: "data/ABC_raw/WHB-10Xv3-Nonneurons.h5ad"
+    # Interaction DB in CSV form; gene columns are semicolon-separated.
+    db_csv: "src/neuronchat/data/merged_interactionDB_human_1092LR.csv"
+    # ABC gene table mapping gene_identifier (ENSG) -> gene_symbol.
+    gene_map_csv: "data/ABC_region_data/gene.csv"
+    # ABC metadata tables used to resolve each nucleus to its supercluster.
+    cell_meta_csv: "data/ABC_region_data/cell_metadata.csv"
+    gene_meta_csv: "data/ABC_region_data/gene_metadata.csv"
+    annotation_csv: "data/ABC_region_data/cluster_annotation_term.csv"
+    membership_csv: "data/ABC_region_data/cluster_to_cluster_annotation_membership.csv"
+    # Rows per read block when filtering the CSR matrix. Lower it if the
+    # subsetting step exceeds available RAM.
+    block_size: 50000
+    neuron_subset_h5ad: "data/ABC_neuronchat/neurons_lr_subset.h5ad"
+    nonneuron_subset_h5ad: "data/ABC_neuronchat/nonneurons_lr_subset.h5ad"
+    merged_h5ad: "data/ABC_neuronchat/merged_lr_subset.h5ad"
+    output_h5ad: "data/ABC_neuronchat/ABC_neuronchat_annotated.h5ad"
+
+neuronchat:
+  # Consumed by pipeline/shared/build_connectome.py to produce data.nc_h5.
+  scope: "dataset"
+  expression_h5ad: "data/ABC_neuronchat/ABC_neuronchat_annotated.h5ad"
+  db_json: "src/neuronchat/data/merged_interactionDB_human_1092LR.json"
+  group_by: "region_supercluster_celltype"
+  M: 50            # permutation count; raise for a finer-grained null
+  fdr: 0.05
+  seed: 42
+  device: "cuda"   # "cpu" for the NumPy backend
+  n_jobs: 1        # CPU backend only
+  layer: null      # null uses .X
+  normalize: "auto"  # auto | always | never; ABC releases arrive log-normalized
+  output_h5: "data/ABC_neuronchat/nc_net_expanded.h5"
+
 output:
   base_dir: "out/abc_expanded"

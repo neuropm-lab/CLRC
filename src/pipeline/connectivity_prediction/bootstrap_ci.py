@@ -48,7 +48,6 @@ import pandas as pd
 from tqdm import tqdm
 
 from clrc.core.io import (
-    find_repo_root,
     load_alignment_data,
     load_pickle,
     load_yaml_config,
@@ -81,7 +80,7 @@ def _load_all_folds(folds_dir: Path) -> Dict[str, FoldArtifact]:
 
 
 def _resolve_model_dir(
-    cfg: dict, target: str, explicit: Path | None, repo_root: Path
+    cfg: dict, target: str, explicit: Path | None
 ) -> Path:
     """Find the model directory containing ``folds/`` for the given target.
 
@@ -106,16 +105,6 @@ def _resolve_model_dir(
     if nested:
         return nested[0]
 
-    target_cfg = cfg["xgboost"][target]
-    legacy_base = repo_root / "data" / "expanded_ABC" / "model_GBM"
-    if legacy_base.exists():
-        matches = sorted(
-            legacy_base.glob(f"*_{target_cfg['version']}_{target_cfg['metric']}*"),
-            reverse=True,
-        )
-        for m in matches:
-            if (m / "folds").exists():
-                return m
 
     raise FileNotFoundError(
         f"Could not locate model directory with folds/ for target={target}"
@@ -169,7 +158,6 @@ def main() -> None:
     cfg = load_yaml_config(args.config)
     out_base = Path(cfg["output"]["base_dir"])
     logger = setup_logging("bootstrap_ci", out_base)
-    repo_root = find_repo_root()
 
     # --- Load alignment data and select features (aligned triple) ---
     target_cfg = cfg["xgboost"][args.target]
@@ -185,7 +173,7 @@ def main() -> None:
     logger.info("Selected %d features in mode %s", n_features, target_cfg["feature_mode"])
 
     # --- Locate and load fold artifacts ---
-    model_dir = _resolve_model_dir(cfg, args.target, args.model_dir, repo_root)
+    model_dir = _resolve_model_dir(cfg, args.target, args.model_dir)
     folds_dir = model_dir / "folds"
     logger.info("Loading folds from %s", folds_dir)
     fold_artifacts = _load_all_folds(folds_dir)

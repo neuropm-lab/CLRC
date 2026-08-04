@@ -63,24 +63,14 @@ def _run_hub_analysis(
     return G, metrics, hubs
 
 
-def _find_model_with_plots(base: Path, target_cfg: dict, repo_root: Path) -> Path:
-    """Locate model dir containing plots/, checking out/ and data/ locations."""
+def _find_model_with_plots(base: Path) -> Path:
+    """Locate the model dir containing ``plots/`` under ``base``."""
     # Check out/ base first
     if (base / "plots").exists():
         return base
     candidates = sorted(base.glob("*/plots"), reverse=True)
     if candidates:
         return candidates[0].parent
-    # Fallback: data/ legacy dirs
-    legacy_base = repo_root / "data" / "expanded_ABC" / "model_GBM"
-    if legacy_base.exists():
-        matches = sorted(
-            legacy_base.glob(f"*_{target_cfg['version']}_{target_cfg['metric']}*"),
-            reverse=True,
-        )
-        for m in matches:
-            if (m / "plots").exists():
-                return m
     return base
 
 
@@ -96,15 +86,8 @@ def main() -> None:
     interp_dir = out_base / "interpretation"
     interp_dir.mkdir(parents=True, exist_ok=True)
 
-    from clrc.core.io import find_repo_root
-    repo_root = find_repo_root()
-
-    sc_dir = _find_model_with_plots(
-        out_base / "models" / "sc", cfg["xgboost"]["sc"], repo_root,
-    )
-    fc_dir = _find_model_with_plots(
-        out_base / "models" / "fc", cfg["xgboost"]["fc"], repo_root,
-    )
+    sc_dir = _find_model_with_plots(out_base / "models" / "sc")
+    fc_dir = _find_model_with_plots(out_base / "models" / "fc")
 
     sc_lr = load_lr_importance(sc_dir)
     fc_lr = load_lr_importance(fc_dir)
