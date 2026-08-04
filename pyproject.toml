@@ -39,6 +39,10 @@ harmonization = [
 ]
 gpu = ["torch>=2.1", "cupy-cuda13x>=13"]  # CUDA 13 — change to cupy-cuda12x for CUDA 12 systems
 
+[tool.hatch.metadata]
+# The Cell Type Mapper dependency is a git URL rather than a PyPI release.
+allow-direct-references = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/clrc", "src/neuronchat"]
 
