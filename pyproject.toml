@@ -31,10 +31,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Only build_expression_matrix.py --source rosmap needs this. It is kept out of
-# the core dependencies because its transitive graph pulls the JupyterLab and
-# Sphinx stacks, which nothing here uses.
-rosmap = [
+# Cell-type label harmonization onto a reference taxonomy. Kept out of the core
+# dependencies because its transitive graph pulls the JupyterLab and Sphinx
+# stacks, which nothing here uses.
+harmonization = [
     "cell_type_mapper @ git+https://github.com/AllenInstitute/cell_type_mapper@v1.7.3",
 ]
 gpu = ["torch>=2.1", "cupy-cuda13x>=13"]  # CUDA 13 — change to cupy-cuda12x for CUDA 12 systems

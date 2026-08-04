@@ -34,7 +34,7 @@ git clone https://github.com/neuropm-lab/CLRC.git
 cd CLRC
 uv sync                  # CPU-only: core dependencies
 uv sync --extra gpu      # + torch/cupy for GPU-accelerated NeuronChat + XGBoost
-uv sync --extra rosmap   # + Cell Type Mapper, only for the ROSMAP prep step
+uv sync --extra harmonization   # + Cell Type Mapper, for cell-type label harmonization
 
 cp configs/abc_expanded.example.yaml configs/abc_expanded.yaml
 cp configs/rosmap_expanded.example.yaml configs/rosmap_expanded.yaml
@@ -64,12 +64,12 @@ Managed with [`uv`](https://docs.astral.sh/uv/):
 ```bash
 uv sync                  # core (CPU) dependencies only
 uv sync --extra gpu      # add torch + cupy-cuda13x for GPU execution
-uv sync --extra rosmap   # add Cell Type Mapper (ROSMAP harmonization only)
+uv sync --extra harmonization   # add Cell Type Mapper (cell-type label harmonization)
 ```
 
 `uv sync` respects `.python-version` (pinned to 3.12) and will fetch a matching interpreter automatically if one isn't already installed. `pyproject.toml` + `uv.lock` is the single source of truth for the dependency graph.
 
-The `rosmap` extra is separate because the Allen Institute's [Cell Type Mapper](https://github.com/AllenInstitute/cell_type_mapper) is not published to PyPI and declares the JupyterLab and Sphinx stacks among its runtime dependencies. Keeping it out of the core set means `uv sync` installs 75 packages rather than 250. You only need it for `build_expression_matrix.py --source rosmap`; every other stage, including all of the structural/functional connectivity work, runs on the core install.
+The `harmonization` extra is separate because the Allen Institute's [Cell Type Mapper](https://github.com/AllenInstitute/cell_type_mapper) is not published to PyPI and declares the JupyterLab and Sphinx stacks among its runtime dependencies. Keeping it out of the core set means `uv sync` installs 75 packages rather than 250. It is needed only when a dataset's cell-type labels have to be mapped onto a reference taxonomy, which in this study is the ROSMAP source of `build_expression_matrix.py`. Every other stage runs on the core install.
 
 ## Usage
 

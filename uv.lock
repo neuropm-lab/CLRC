@@ -656,7 +656,7 @@ gpu = [
     { name = "torch", version = "2.13.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform != 'linux'" },
     { name = "torch", version = "2.13.0+cu130", source = { registry = "https://download.pytorch.org/whl/cu130" }, marker = "sys_platform == 'linux'" },
 ]
-rosmap = [
+harmonization = [
     { name = "cell-type-mapper" },
 ]
 
@@ -664,7 +664,7 @@ rosmap = [
 requires-dist = [
     { name = "anndata", specifier = ">=0.10" },
     { name = "brainsmash", specifier = ">=0.11.0" },
-    { name = "cell-type-mapper", marker = "extra == 'rosmap'", git = "https://github.com/AllenInstitute/cell_type_mapper?rev=v1.7.3" },
+    { name = "cell-type-mapper", marker = "extra == 'harmonization'", git = "https://github.com/AllenInstitute/cell_type_mapper?rev=v1.7.3" },
     { name = "cupy-cuda13x", marker = "extra == 'gpu'", specifier = ">=13" },
     { name = "gseapy", specifier = ">=1.1" },
     { name = "h5py", specifier = ">=3.10" },
@@ -687,7 +687,7 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.66" },
     { name = "xgboost", specifier = ">=3.0" },
 ]
-provides-extras = ["rosmap", "gpu"]
+provides-extras = ["harmonization", "gpu"]
 
 [[package]]
 name = "colorama"
