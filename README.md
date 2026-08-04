@@ -142,6 +142,26 @@ uv run python src/pipeline/pathology_correlation/explanatory_value_analysis.py -
 
 Two example configs are provided: `configs/abc_expanded.example.yaml` (structural/functional connectivity prediction) and `configs/rosmap_expanded.example.yaml` (Alzheimer's disease association analysis). Copy each to a `.yaml` file without `.example` and edit the `data.*` paths to point at your local copies of the ABC/ROSMAP data. Machine-local absolute paths (e.g. an atlas NIfTI) are expected to be supplied via `${VAR_NAME}` shell-style expansion inside the YAML (see `spatial_null.atlas_nii` in `configs/abc_expanded.example.yaml`).
 
+## Correspondence to the manuscript Methods
+
+Each Methods subsection maps to the files below.
+
+| Methods subsection | Code |
+| --- | --- |
+| *Dataset 1: Allen Brain Cell Atlas* | `src/pipeline/shared/build_expression_matrix.py --source abc`; `src/clrc/preprocessing/abc.py` |
+| *Dataset 2: ROSMAP Multimodal Atlas* | `src/pipeline/shared/build_expression_matrix.py --source rosmap`; `src/clrc/preprocessing/rosmap.py`; `src/pipeline/pathology_correlation/preprocess_rosmap_lr_subset.py` |
+| *Construction of a Cell-Type-Resolved Directed Molecular Connectome* | `src/pipeline/shared/build_connectome.py`; `src/clrc/preprocessing/connectome.py`; `src/neuronchat/` (`core.py`, `create.py`, `run.py`, `database.py`, `backends/`) |
+| *Allen Human Reference Atlas* | `src/clrc/spatial/atlas.py` |
+| *Diffusion-Weighted MRI Structural Connectome* | `src/pipeline/shared/build_connectivity_targets.py --target structural`; `src/clrc/spatial/connectivity_targets.py` |
+| *Resting-State Functional MRI Acquisition/Preprocessing* | `src/pipeline/shared/build_connectivity_targets.py --target functional` |
+| *Connectivity Prediction Model* | `src/pipeline/connectivity_prediction/hpo.py`, `train_xgboost.py`; `src/clrc/prediction/{hpo,lobo,xgboost,evaluation}.py` |
+| *SHAP Analysis* | `src/pipeline/connectivity_prediction/shap_analysis.py`, `aggregate_importance.py`; `src/clrc/prediction/{shap,importance,interpretation}.py` |
+| *Differential Expression Analysis* | `src/pipeline/connectivity_prediction/cross_target_biology.py`; `src/clrc/biology/comparison.py` |
+| *Gene Set Enrichment Analysis* | `src/clrc/biology/enrichment.py`, `classification.py` |
+| *Network Analysis* | `src/clrc/biology/network.py`; `src/pipeline/characterization/` |
+| *Additional Computational and Statistical Analyses* | spatial-autocorrelation nulls (`spatial_null.py`, `feature_level_null.py`, `analyze_variogram_null_correlation.py`; `src/clrc/spatial/`), co-expression baselines (`coexpression_baseline.py`, `analyze_coexpression_baseline.py`; `src/clrc/features/coexpression.py`), bias validation by cross-prediction (`cross_prediction.py`, `analyze_cross_prediction.py`; `src/clrc/prediction/bias_validation.py`), expression heterogeneity (`analyze_expression_heterogeneity.py`), bootstrap CIs (`bootstrap_ci.py`; `src/clrc/prediction/bootstrap.py`), variance partition and DML (`src/pipeline/pathology_correlation/explanatory_value_analysis.py`; `src/clrc/causal/explanatory_value.py`) |
+| *Alzheimer's disease association* | `src/pipeline/pathology_correlation/ad_aggregate.py`, `ad_correlate.py`, `region_expression_covariate.py`; `src/clrc/ad/` |
+
 ## Repository structure
 
 ```
