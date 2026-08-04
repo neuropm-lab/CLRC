@@ -25,7 +25,7 @@ Connectomics describes macroscale brain networks; single-cell transcriptomics de
 - **Linux** if using the `gpu` extra (the CUDA-enabled PyTorch/CuPy build pinned in `pyproject.toml` is Linux-only).
 - **NeuronChat runs on CPU or GPU**: `src/neuronchat/backends/` provides interchangeable NumPy and PyTorch/CuPy implementations of the same interface. GPU is recommended for the permutation counts (`M`) and region/cell-type scale used in the manuscript, but is not architecturally required.
 - **NVIDIA GPU + CUDA 13** if you do want GPU execution — install with the `gpu` extra (`torch`, `cupy-cuda13x`). Edit `[tool.uv.sources]` in `pyproject.toml` and swap `cupy-cuda13x` for `cupy-cuda12x` if targeting CUDA 12.
-- **Input data is not bundled.** The ROSMAP (Religious Orders Study / Memory and Aging Project) cohort data is subject to its own restricted-access data use agreements and must be obtained independently (see [Reproducibility](#reproducibility)). `data/` and `out/` are gitignored.
+- **Input data is not bundled.** The ROSMAP (Religious Orders Study / Memory and Aging Project) cohort data is subject to its own data use agreements and must be obtained independently; [ROSMAP input](#rosmap-input-exactly-which-file-to-download) names the exact file and the command that downloads it. `data/` and `out/` are gitignored.
 
 ## Quick start
 
@@ -131,9 +131,9 @@ uv run python src/pipeline/pathology_correlation/explanatory_value_analysis.py -
 ## Inputs and outputs
 
 **Inputs** (paths configured per-analysis in `configs/*.yaml`):
-- ABC atlas snRNA-seq (H5/h5ad), 109 brain regions x 31 cell types.
+- ABC atlas snRNA-seq (H5/h5ad), 109 brain regions x 31 cell types, of which 2,133 of the 3,379 possible region-by-cell-type combinations are populated.
 - DSI Studio tractography `.mat` files and resting-state functional-connectivity `.mat` file (structural/functional connectivity targets).
-- ROSMAP snRNA-seq (per-subject H5), clinical/pathology spreadsheet, and subject-linkage CSV.
+- ROSMAP snRNA-seq: one file, `snRNA_Matrix.2263395_Cells_July7_2025.h5ad` (see [ROSMAP input](#rosmap-input-exactly-which-file-to-download)), plus the clinical and neuropathology tables for the association analyses. The per-subject connectome H5s are produced by `build_connectome.py --scope subject`; they are an output of this pipeline, not an input to it.
 - `src/neuronchat/data/merged_interactionDB_human*.{csv,json}`: the curated ligand-receptor interaction database, merged from the human subsets of NeuronChatDB and CellChat v2 plus additional curated human entries, and bundled with the repository. It holds 1,092 LR pairs spanning 447 unique HGNC gene symbols. The manuscript's other two counts are computed downstream from this database, not stored: of the 1,092 pairs, 1,014 yield at least one non-zero communication value across the 2,133 populated region-by-cell-type nodes, and 811 retain at least one feature after the NaN/zero pre-selection filter and form the basis of the downstream analyses.
 
 **Outputs**: each driver writes under `<config.output.base_dir>/`, e.g. `out/abc_expanded/` or `out/rosmap_expanded/` (gitignored) — per-fold model artifacts, feature-importance CSVs, SHAP values, spatial-null results, and partial-Spearman correlation tables. Exact output layout is documented in each driver's module docstring.
@@ -208,15 +208,18 @@ Each Methods subsection maps to the files below.
 
 ```
 src/
-  clrc/          Library — connectome feature construction, XGBoost/LOBO prediction,
-                 spatial null models, AD partial-Spearman correlation, network/pathway
-                 biology, causal (variance-partition, DML) analyses
+  clrc/          Library — expression-matrix preparation and connectome construction,
+                 feature construction, XGBoost/LOBO prediction, spatial null models,
+                 AD partial-Spearman correlation, network/pathway biology, causal
+                 (variance-partition, DML) analyses
   neuronchat/    Python port of the NeuronChat cell-cell-communication inference model
                  (numpy + torch/cupy backends); src/neuronchat/data/ holds the curated
                  ligand-receptor interaction database
   pipeline/      YAML-config-driven drivers, split by analysis track:
     shared/               upstream data prep (expression matrix, connectome
                           construction, connectivity targets, CCI feature matrix)
+    characterization/         descriptive connectome summaries (top LR pairs, regions,
+                              cell types, distance decay)
     connectivity_prediction/  SC/FC prediction track (HPO, training, SHAP, robustness checks)
     pathology_correlation/    ROSMAP -> AD association track
 configs/         Example YAML configs (copy + edit; production configs are gitignored)
